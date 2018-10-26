@@ -90,6 +90,10 @@ Template.game.helpers({
       ...getRolesObject(p.role)
     }
   },
+  isGameMaster() {
+    const userId = Meteor.userId()
+    return this.players.find(p => p.userId === userId) && this.gameMaster === userId
+  },
   hasEnoughPlayers() {
     return this.players.length >= GAME_MINIMUM_PLAYERS
   },
@@ -131,6 +135,10 @@ Template.game.events({
   },
   'click .js-startGame'() {
     Meteor.call('startGame', this._id)
+  },
+  'click .js-killGame'() {
+    if (window.confirm('Are you sure you want to terminate the current game ?'))
+      Meteor.call('killGame', this._id)
   }
 })
 

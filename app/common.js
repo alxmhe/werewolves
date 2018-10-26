@@ -1,7 +1,7 @@
 import { Mongo } from 'meteor/mongo'
 import SimpleSchema from 'simpl-schema'
 
-GAME_MINIMUM_PLAYERS = 4
+GAME_MINIMUM_PLAYERS = 1
 
 SimpleSchema.extendOptions(['autoform'])
 

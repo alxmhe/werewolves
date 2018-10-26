@@ -68,6 +68,9 @@
 <template name="game">
   {{#if startedAt}}
     <h3>Game {{_id}}</h3>
+    {{#if isGameMaster}}
+      <p>You are the GAMEMASTER, you have a responsability to watch over the game.<br/>In case the game is stuck, kill it with <button class="btn btn-danger btn-sm js-killGame">FIRE</button></p>
+    {{/if}}
     <div class="row">
       <div class="col-md-8">
         <div class="card">

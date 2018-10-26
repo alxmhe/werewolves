@@ -48,6 +48,9 @@ Meteor.publish('allChats', () => {
     return false
 
   var transform = chat => {
+    if (!chat.werewolvesOnly)
+      return chat
+    // Secure werewolves chat.
     const game = Games.findOne(chat.gameId)
     const werewolf = game && game.players.find(p => p.userId === this.userId && p.role === "werewolf")
     return {
@@ -349,6 +352,7 @@ Meteor.methods({
       $set: {
         isNight: false,
         index: 0,
+        gameMaster: this.userId,
         players: game.players.map((player, index) => {
           return {
             ...player,
@@ -642,6 +646,21 @@ Meteor.methods({
           content
         }
       }
+    })
+  },
+  killGame(gameId) {
+    if (!this.userId)
+      throw new Meteor.Error('You need to log in.')
+    const game = Games.findOne(gameId)
+    if (!game.startedAt)
+      throw new Meteor.Error('Game not started.')
+    const player = game.players.find(p => p.userId === this.userId)
+    if (!player)
+      throw new Meteor.Error('You are not in.')
+    if (player.userId !== game.gameMaster)
+      throw new Meteor.Error('You are not game master.')
+    return Games.update(gameId, {
+      $set: { endedAt: new Date() }
     })
   }
 })
