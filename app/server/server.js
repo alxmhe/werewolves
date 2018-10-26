@@ -5,6 +5,7 @@ let timers = []
 Meteor.publish('allGames', function() {
   if (!this.userId)
     return false
+
   var transform = game => {
     let roles = []
     game.players.forEach(p => {
@@ -79,6 +80,10 @@ Meteor.publish('allChats', () => {
   })
 
   self.ready()
+})
+
+Meteor.publish('allUsers', function() {
+  return Meteor.users.find({ "status.online": true }, { fields: { "status.online": 1, "profile.username": 1 }})
 })
 
 function computeDeaths(game) {

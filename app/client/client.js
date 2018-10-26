@@ -6,6 +6,7 @@ import './index.html'
 
 Meteor.subscribe('allGames')
 Meteor.subscribe('allChats')
+Meteor.subscribe('allUsers')
 
 function getRolesObject(role) {
   return {
@@ -115,6 +116,9 @@ Template.game.helpers({
         ...getRolesObject(p.role)
       }
     })
+  },
+  onlineUsers() {
+    return Meteor.users.find({})
   },
   remainingWerewolves() {
     let remainder = this.nbWerewolves
