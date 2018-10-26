@@ -1,0 +1,27 @@
+version: "3"
+services:
+  database:
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    expose:
+      - 27017
+    volumes:
+      - ./data/db:/data/db
+
+  web:
+    image: node:latest
+    restart: always
+    environment:
+      MONGO_URL: mongodb://admin:password@database/werewolf?authSource=admin
+      PORT: 80
+    volumes:
+      - ./bundle:/app
+    depends_on:
+      - database
+    ports:
+      - 80:80
+    working_dir: /app/
+    command: sh -c "(npm install && (cd programs/server && npm install && npm run install) && node main.js)"
