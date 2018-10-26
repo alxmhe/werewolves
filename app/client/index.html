@@ -140,8 +140,8 @@
       {{> gameOver}}
     {{else}}
       {{#if isIntro}}
-        <p class="lead">1906, a cataclysmic event turns the planet into perpetual terror, every night sees a full moon.</p>
-        <p>In the village of Mahanakhorn, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects the villagers are under attack from a pack of werewolves.</p>
+        <p class="lead">Full moon every night.</p>
+        <p>In the village, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects werewolves are attacking the village.</p>
         <button class="btn btn-primary js-markIntroRead">Ready to continue</button>
       {{else}}
         {{#if isWitness}}
@@ -203,6 +203,7 @@
     {{/if}}
     --}}
     <p>The village has to vote.</p>
+    <p>Hurry up, you only have {{remainingTime}} seconds !</p>
     {{#if hasLynched}}
       <p>You voted to lynch {{hasLynched.username}}.</p>
     {{else}}
@@ -294,15 +295,15 @@
 </template>
 
 <template name="chatbox">
-  <ul>
-  {{#each messages}}
-    <li><em><strong>{{authorName}}</strong> said</em><blockquote>{{content}}</blockquote></li>
-  {{/each}}
-  </ul>
   {{#if canPost}}
     <form class="js-sendMessage">
       <input type="text" class="form-control" name="message">
       <button type="submit" class="btn btn-primary">Send message</button>
     </form>
   {{/if}}
+  <ul>
+  {{#each messages}}
+    <li><em><strong>{{authorName}}</strong> said</em><blockquote>{{content}}</blockquote></li>
+  {{/each}}
+  </ul>
 </template>

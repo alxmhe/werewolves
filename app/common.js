@@ -2,6 +2,7 @@ import { Mongo } from 'meteor/mongo'
 import SimpleSchema from 'simpl-schema'
 
 GAME_MINIMUM_PLAYERS = 4
+GAME_DAY_DURATION = 3 * 60 * 1000 // 3 minutes
 
 SimpleSchema.extendOptions(['autoform'])
 

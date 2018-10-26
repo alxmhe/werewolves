@@ -47,11 +47,19 @@ Template.dashboard.helpers({
 
 Template.dashboard.events({
   'click .js-createGame'() {
-    Meteor.call('createGame')
+    Meteor.call('createGame', (err, data) => {
+      if (err)
+        console.error(err.message)
+      console.log("data", data)
+    })
   },
   'submit .js-saveUsername'(e) {
     e.preventDefault()
-    Meteor.call('saveUsername', e.currentTarget.username.value)
+    Meteor.call('saveUsername', e.currentTarget.username.value, (err, data) => {
+      if (err)
+        console.error(err.message)
+      console.log("data", data)
+    })
   }
 })
 
@@ -128,17 +136,33 @@ Template.game.helpers({
 
 Template.game.events({
   'click .js-joinGame'() {
-    Meteor.call('joinGame', this._id)
+    Meteor.call('joinGame', this._id, (err, data) => {
+      if (err)
+        console.error(err.message)
+      console.log("data", data)
+    })
   },
   'click .js-leaveGame'() {
-    Meteor.call('leaveGame', this._id)
+    Meteor.call('leaveGame', this._id, (err, data) => {
+      if (err)
+        console.error(err.message)
+      console.log("data", data)
+    })
   },
   'click .js-startGame'() {
-    Meteor.call('startGame', this._id)
+    Meteor.call('startGame', this._id, (err, data) => {
+      if (err)
+        console.error(err.message)
+      console.log("data", data)
+    })
   },
   'click .js-killGame'() {
     if (window.confirm('Are you sure you want to terminate the current game ?'))
-      Meteor.call('killGame', this._id)
+      Meteor.call('killGame', this._id, (err, data) => {
+        if (err)
+          console.error(err.message)
+        console.log("data", data)
+      })
   }
 })
 
@@ -173,6 +197,25 @@ Template.ongoingGame.events({
   }
 })
 
+Template.ongoingDay.onCreated(function() {
+  this.timer = null
+})
+
+Template.ongoingDay.onRendered(function() {
+  const game = Games.findOne(this.data._id)
+  if (game) {
+    Session.set('timer-day-'+this.data._id, GAME_DAY_DURATION)
+    this.timer = setInterval(function() {
+      const remainingTime = Session.get('timer-day-'+game._id, 0)
+      if (!remainingTime || remainingTime <= 0) {
+        clearInterval(this.timer)
+        this.timer = null
+      } else
+        Session.set('timer-day-'+game._id, remainingTime - 1000)
+    }, 1000)
+  }
+})
+
 Template.ongoingDay.helpers({
   day() {
     return this.days.find(d => d.index === this.index)
@@ -199,6 +242,9 @@ Template.ongoingDay.helpers({
   },
   waitHunter() {
     return this.players.find(p => p.role === "hunter" && p.isDead) && !this.days.find(d => !!d.hunted)
+  },
+  remainingTime() {
+    return Math.floor(Session.get('timer-day-'+this._id, 0) / 1000)
   }
 })
 
@@ -271,7 +317,6 @@ Template.ongoingNight.helpers({
     return poisoned && this.players.find(p => p.userId === poisoned)
   },
   witchHasHealing() {
-    console.log(this)
     const player = this.players.find(p => p.userId === Meteor.userId() && p.role === "witch" && !p.isDead)
     if (player) {
       const nightHealed = this.nights && this.nights.find(n => !!n.healed)
@@ -310,6 +355,8 @@ Template.ongoingNight.helpers({
 Template.ongoingNight.events({
   'click .js-seer'(e, t) {
     Meteor.call('seer', t.data._id, this.userId, (err, seered) => {
+      if (err)
+        console.error(err.message)
       alert(this.username + ' is ' + seered)
     })
   },
@@ -353,7 +400,7 @@ Template.chatbox.helpers({
         ...m,
         authorName: this.players.find(p => p.userId === m.author).username
       }
-    })
+    }).reverse()
   }
 })
 
@@ -362,7 +409,11 @@ Template.chatbox.events({
     e.preventDefault()
     const message =  e.currentTarget.message.value
     if (message)
-      Meteor.call("sendMessage", this.chatId, message)
+      Meteor.call("sendMessage", this.chatId, message, (err, data) => {
+        if (err)
+          console.error(err.message)
+        console.log("data", data)
+      })
     e.currentTarget.reset()
   }
 })

@@ -1,5 +1,7 @@
 import { Meteor } from 'meteor/meteor'
 
+let timers = []
+
 Meteor.publish('allGames', function() {
   if (!this.userId)
     return false
@@ -79,8 +81,7 @@ Meteor.publish('allChats', () => {
   self.ready()
 })
 
-function computeDeaths(gameId) {
-  const game = Games.findOne(gameId)
+function computeDeaths(game) {
   let deaths = []
   let night = null
   if (!game.isNight) {
@@ -123,8 +124,11 @@ function computeDeaths(gameId) {
   return deaths
 }
 
-function endDay(gameId, deaths) {
+function endDay(gameId) {
   const game = Games.findOne(gameId)
+  if (!game)
+    return false
+  let deaths = computeDeaths(game)
 
   let modifier = {
     isNight: true,
@@ -182,8 +186,11 @@ function endDay(gameId, deaths) {
   }
 }
 
-function endNight(gameId, deaths) {
+function endNight(gameId) {
   const game = Games.findOne(gameId)
+  if (!game)
+    return false
+  let deaths = computeDeaths(game)
 
   // Night ended by werewolf
   const night = game.isNight && game.nights.find(n => n.index === game.index)
@@ -240,13 +247,66 @@ function endNight(gameId, deaths) {
       }
     }
   })
+
+  // Using a timer for the day.
+  if (update)
+    timers["day-"+gameId] = Meteor.setTimeout(function() {
+      computeVotesLynch(gameId)
+    }, GAME_DAY_DURATION)
+
   return update && {
     gameOver: !!modifier.endedAt || false,
     deaths
   }
 }
 
+function computeVotesLynch(gameId) {
+  const game = Games.findOne(gameId)
+  const day = game && !game.isNight && game.days.find(d => d.index === game.index)
+  if (!day)
+    return false
+
+  // Clear day timeout.
+  Meteor.clearTimeout(timers["day-"+gameId])
+  timers["day-"+gameId] = null
+
+  // Compute votes result.
+  let results = game.players.map(p => {
+    return {
+      ...p,
+      votesAgainst: p.isDead ? 0 : day.votes.map(v => {
+        if (v.target !== p.userId)
+          return 0
+        // mayor vote counts for 2
+        return game.players.find(voter => voter.userId === v.userId).role === "mayor" ? 2 : 1
+      }).reduce((acc, val) => acc + val, 0)
+    }
+  })
+  results.sort((val1, val2) => val1.votesAgainst < val2.votesAgainst)
+
+  if (results.length < 2 || results[0].votesAgainst !== results[1].votesAgainst)
+    day.lynched = results[0].userId
+
+  return Games.update(gameId, {
+    $set: {
+      days: game.days.map(d => d.index !== day.index ? d : day)
+    }
+  }) && endDay(gameId)
+}
+
 Meteor.methods({
+  saveUsername(username) {
+    if (!this.userId)
+      throw new Meteor.Error('You need to log in.')
+    return Meteor.users.update(this.userId, {
+      $set: {
+        profile: {
+          username
+        }
+      }
+    })
+  },
+
   createGame() {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -260,17 +320,7 @@ Meteor.methods({
       createdAt: new Date()
     })
   },
-  saveUsername(username) {
-    if (!this.userId)
-      throw new Meteor.Error('You need to log in.')
-    return Meteor.users.update(this.userId, {
-      $set: {
-        profile: {
-          username
-        }
-      }
-    })
-  },
+
   joinGame(gameId) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -285,11 +335,13 @@ Meteor.methods({
       }
     })
   },
+
   leaveGame(gameId) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
     const game = Games.findOne(gameId)
-    if (!game.players.map(p => p.userId === this.userId).reduce((acc, val) => acc && val))
+    console.log(game.players)
+    if (!game.players.find(p => p.userId === this.userId))
       throw new Meteor.Error('You are not in.')
     if (!!game.startedAt)
       throw new Meteor.Error('Game already started.')
@@ -302,6 +354,7 @@ Meteor.methods({
       }
     })
   },
+
   startGame(gameId) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -348,7 +401,7 @@ Meteor.methods({
       roles[randomIndex] = temporaryValue
     }
     // Assign to players
-    return Games.update(gameId, {
+    const update = Games.update(gameId, {
       $set: {
         isNight: false,
         index: 0,
@@ -376,7 +429,30 @@ Meteor.methods({
         }
       }
     })
+    // Using a timer for the day.
+    if (update)
+      timers["day-"+gameId] = Meteor.setTimeout(function() {
+        computeVotesLynch(gameId)
+      }, GAME_DAY_DURATION)
+    return update
   },
+
+  killGame(gameId) {
+    if (!this.userId)
+      throw new Meteor.Error('You need to log in.')
+    const game = Games.findOne(gameId)
+    if (!game.startedAt)
+      throw new Meteor.Error('Game not started.')
+    const player = game.players.find(p => p.userId === this.userId)
+    if (!player)
+      throw new Meteor.Error('You are not in.')
+    if (player.userId !== game.gameMaster)
+      throw new Meteor.Error('You are not game master.')
+    return Games.update(gameId, {
+      $set: { endedAt: new Date() }
+    })
+  },
+
   voteLynch(gameId, targetId) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -419,30 +495,7 @@ Meteor.methods({
 
     // Check if everyone has voted.
     const missingVoters = game.players.find(p => !p.isDead && !day.votes.find(v => v.userId === p.userId))
-    if (!!missingVoters)
-      return true
-
-    // Compute votes result.
-    let results = game.players.map(p => {
-      return {
-        ...p,
-        votesAgainst: p.isDead ? 0 : day.votes.map(v => {
-          if (v.target !== p.userId)
-            return 0
-          // mayor vote counts for 2
-          return game.players.find(voter => voter.userId === v.userId).role === "mayor" ? 2 : 1
-        }).reduce((acc, val) => acc + val, 0)
-      }
-    })
-    results.sort((val1, val2) => val1.votesAgainst < val2.votesAgainst)
-
-    if (results.length < 2 || results[0].votesAgainst !== results[1].votesAgainst)
-      day.lynched = results[0].userId
-    return Games.update(gameId, {
-      $set: {
-        days: game.days.map(d => d.index !== day.index ? d : day)
-      }
-    }) && endDay(gameId, computeDeaths(gameId))
+    return !missingVoters ? computeVotesLynch(gameId) : true
   },
 
   cupid(gameId, playerA, playerB) {
@@ -476,6 +529,7 @@ Meteor.methods({
       }
     })
   },
+
   seer(gameId, targetId) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -508,6 +562,7 @@ Meteor.methods({
       }
     }) && seered.role
   },
+
   voteAttack(gameId, targetId) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -565,8 +620,9 @@ Meteor.methods({
       $set: {
         nights: game.nights.map(n => n.index !== night.index ? n : night)
       }
-    }) && endNight(gameId, computeDeaths(gameId))
+    }) && endNight(gameId)
   },
+
   witch(gameId, poisoned, healed) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -598,8 +654,9 @@ Meteor.methods({
       $set: {
         nights: game.nights.map(n => n.index !== night.index ? n : night)
       }
-    }) && endNight(gameId, computeDeaths(gameId))
+    }) && endNight(gameId)
   },
+
   hunt(gameId, target) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -624,8 +681,9 @@ Meteor.methods({
       $set: {
         days: game.days.map(d => d.index !== day.index ? d : day)
       }
-    }) && endDay(gameId, computeDeaths(gameId))
+    }) && endDay(gameId)
   },
+
   sendMessage(chatId, content) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
@@ -646,21 +704,6 @@ Meteor.methods({
           content
         }
       }
-    })
-  },
-  killGame(gameId) {
-    if (!this.userId)
-      throw new Meteor.Error('You need to log in.')
-    const game = Games.findOne(gameId)
-    if (!game.startedAt)
-      throw new Meteor.Error('Game not started.')
-    const player = game.players.find(p => p.userId === this.userId)
-    if (!player)
-      throw new Meteor.Error('You are not in.')
-    if (player.userId !== game.gameMaster)
-      throw new Meteor.Error('You are not game master.')
-    return Games.update(gameId, {
-      $set: { endedAt: new Date() }
     })
   }
 })
