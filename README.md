@@ -12,6 +12,7 @@ Docker (deployment) : http://www.docker.com
 `tar xzf app.tar.gz && docker-compose up -d`
 
 ## TODO
+- Secure werewolves chat.
 - Make number of werewolves proportional to the square root of the total number of players.
 - Implement more roles.
 - Add mail server for lost password.

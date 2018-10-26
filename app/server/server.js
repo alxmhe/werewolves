@@ -47,39 +47,8 @@ Meteor.publish('allGames', function() {
 })
 
 Meteor.publish('allChats', () => {
-  if (!this.userId)
-    return false
-
-  var transform = chat => {
-    if (!chat.werewolvesOnly)
-      return chat
-    // Secure werewolves chat.
-    const game = Games.findOne(chat.gameId)
-    const werewolf = game && game.players.find(p => p.userId === this.userId && p.role === "werewolf")
-    return {
-      ...chat,
-      messages : !werewolf ? [] : chat.messages
-    }
-  }
-
-  var self = this
-  var observer = Chats.find().observe({
-    added: function (chat) {
-      self.added('chats', chat._id, transform(chat));
-    },
-    changed: function (newChat, oldChat) {
-      self.changed('chats', newChat._id, transform(newChat));
-    },
-    removed: function (oldChat) {
-      self.removed('chats', oldChat._id);
-    }
-  })
-
-  self.onStop(() => {
-    observer.stop()
-  })
-
-  self.ready()
+  // @TODO : Secure werewolves chat.
+  return Chats.find()
 })
 
 Meteor.publish('allUsers', function() {
@@ -152,19 +121,19 @@ function endDay(gameId) {
         --remainingVillagers
     }
   })
-  const remainingPlayers = remainingWerewolves + remainingVillagers
 
   // Case of the hunter.
   const day = !game.isNight && game.days.find(d => d.index === game.index)
   const hunter = modifier.players.find(p => p.role === "hunter")
   const hasHunted = !!game.days.find(d => !!d.hunted)
+  const canHunt = hunter && !hasHunted && remainingWerewolves > 0
   // If the hunter is dead and has hunted, but no lynching yet.
   // Or he is dead, but he didn't hunt.
   // Then don't start the night.
   if (day && hunter && hunter.isDead && ((hasHunted && !day.lynched) || !hasHunted))
     modifier.isNight = false
 
-  if (!(hunter && !hasHunted && remainingPlayers > 0) && (remainingVillagers <= 0 || remainingWerewolves <= 0)) {
+  if (!canHunt && (remainingVillagers <= 0 || remainingWerewolves <= 0)) {
     modifier.isNight = false
     modifier.endedAt = new Date()
   }
@@ -345,7 +314,6 @@ Meteor.methods({
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
     const game = Games.findOne(gameId)
-    console.log(game.players)
     if (!game.players.find(p => p.userId === this.userId))
       throw new Meteor.Error('You are not in.')
     if (!!game.startedAt)
@@ -384,15 +352,15 @@ Meteor.methods({
       else if (i < nbWerewolves + 2)
         roles.push('witch')
       else if (i < nbWerewolves + 3)
-        roles.push('hunter')
-      else if (i < nbWerewolves + 4)
         roles.push('mayor')
-      else if (i < nbWerewolves + 5)
+      else if (i < nbWerewolves + 4)
         roles.push('cupid')
-      else if (i < nbWerewolves + 6)
-        roles.push('prince')
-      else if (i < nbWerewolves + 7)
-        roles.push('priest')
+      else if (i < nbWerewolves + 5)
+        roles.push('hunter')
+      // else if (i < nbWerewolves + 6)
+      //   roles.push('prince')
+      // else if (i < nbWerewolves + 7)
+      //   roles.push('priest')
       else
         roles.push('villager')
     }
