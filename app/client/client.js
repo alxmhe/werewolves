@@ -46,6 +46,12 @@ function notifyPlayer(type = "poke") {
       case "vote":
         options.body = "Please vote."
         break
+      case "start":
+        options.body = "The game is on."
+        break
+      case "night":
+        options.body = "Everybody, close your eyes!"
+        break
       default:
     }
     if (Notification.permission === "granted")
@@ -207,7 +213,12 @@ Template.game.events({
 })
 
 Template.ongoingGame.onRendered(function() {
-  Session.set("gameId", this.data._id)
+  const game = Games.findOne(this.data._id)
+  if (game) {
+    Session.set("gameId", game._id)
+    if (game.players.find(p => p.userId === Meteor.userId()))
+      notifyPlayer("start")
+  }
 })
 
 Template.ongoingGame.helpers({
@@ -254,7 +265,9 @@ Template.ongoingDay.onRendered(function() {
       } else
         Session.set('timer-day-'+game._id, remainingTime - 1000)
     }, 1000)
-    if (game.players.find(p => p.userId === Meteor.userId()))
+    // Notify of vote
+    const user = Meteor.user()
+    if (user && user.status && user.status.idle && game.players.find(p => p.userId === Meteor.userId()))
       notifyPlayer("vote")
   }
 })
@@ -309,7 +322,7 @@ Template.ongoingDay.events({
 Template.ongoingNight.onCreated(function() {
   const game = Games.findOne(this.data._id)
   if (game && game.players.find(p => p.userId === Meteor.userId()))
-    notifyPlayer("vote")
+    notifyPlayer("night")
 })
 
 Template.ongoingNight.helpers({
