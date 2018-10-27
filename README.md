@@ -6,7 +6,7 @@ Meteor (development and build) : https://www.meteor.com
 Docker (deployment) : http://www.docker.com
 
 ## Build
-`meteor build ../ --server-only --architecture os.linux.x86_64`
+`cd app && meteor build ../ --server-only --architecture os.linux.x86_64`
 
 ## Deployment
 `tar xzf app.tar.gz && docker-compose up -d`

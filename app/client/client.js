@@ -8,6 +8,20 @@ Meteor.subscribe('allGames')
 Meteor.subscribe('allChats')
 Meteor.subscribe('allUsers')
 
+var swRegistration
+
+Meteor.startup(function() {
+  if ('serviceWorker' in navigator && 'Notification' in window) {
+    if (Notification.permission !== "granted")
+      Notification.requestPermission()
+    navigator.serviceWorker.register('sw.js')
+    .then(function(swReg) {
+      swRegistration = swReg
+    })
+    .catch(function(error) {})
+  }
+})
+
 function getRolesObject(role) {
   return {
     isWerewolf: role === "werewolf",
@@ -19,6 +33,28 @@ function getRolesObject(role) {
     isCupid: role === "cupid",
     isMayor: role === "mayor",
     isVillager: role === "villager"
+  }
+}
+
+function notifyPlayer(type = "poke") {
+  if (swRegistration) {
+    const title = "Smells like werewolf"
+    let options = {
+      body: "You're needed back on set."
+    }
+    switch (type) {
+      case "vote":
+        options.body = "Please vote."
+        break
+      default:
+    }
+    if (Notification.permission === "granted")
+      swRegistration.showNotification(title, options)
+    else if (Notification.permission !== "denied")
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted")
+          swRegistration.showNotification(title, options)
+      })
   }
 }
 
@@ -208,8 +244,9 @@ Template.ongoingDay.onCreated(function() {
 Template.ongoingDay.onRendered(function() {
   const game = Games.findOne(this.data._id)
   if (game) {
-    Session.set('timer-day-'+this.data._id, GAME_DAY_DURATION)
+    Session.set('timer-day-'+game._id, GAME_DAY_DURATION)
     this.timer = setInterval(function() {
+      // @TODO :  Initialize to correct value.
       const remainingTime = Session.get('timer-day-'+game._id, 0)
       if (!remainingTime || remainingTime <= 0) {
         clearInterval(this.timer)
@@ -217,6 +254,8 @@ Template.ongoingDay.onRendered(function() {
       } else
         Session.set('timer-day-'+game._id, remainingTime - 1000)
     }, 1000)
+    if (game.players.find(p => p.userId === Meteor.userId()))
+      notifyPlayer("vote")
   }
 })
 
@@ -265,6 +304,12 @@ Template.ongoingDay.events({
         console.error(err.message)
     })
   }
+})
+
+Template.ongoingNight.onCreated(function() {
+  const game = Games.findOne(this.data._id)
+  if (game && game.players.find(p => p.userId === Meteor.userId()))
+    notifyPlayer("vote")
 })
 
 Template.ongoingNight.helpers({
