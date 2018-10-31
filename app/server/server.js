@@ -285,7 +285,7 @@ Meteor.methods({
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
 
-    return Games.insert({
+    const gameId = Games.insert({
       players: [
         {
           userId: this.userId
@@ -293,6 +293,15 @@ Meteor.methods({
       ],
       createdAt: new Date()
     })
+    return Games.update(gameId, {
+      $set: {
+        chatId: Chats.insert({
+          gameId,
+          werewolvesOnly: false,
+          messages: []
+        })
+      }
+    }) && gameId
   },
 
   joinGame(gameId) {
@@ -396,8 +405,7 @@ Meteor.methods({
             gameId,
             index: 0,
             werewolvesOnly: false,
-            messages: [],
-            members: game.players.map(p => p.userId)
+            messages: []
           })
         }
       }

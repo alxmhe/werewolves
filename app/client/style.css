@@ -1,0 +1,18 @@
+ul.messages {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  margin-top: 10px;
+}
+ul.messages li {
+  padding: 0;
+  margin: 0;
+  border-left: 1px solid grey;
+  padding-left: 10px;
+  margin-bottom: 5px;
+}
+ul.messages li span.username {
+  font-style: italic;
+  color: grey;
+  font-weight: bold;
+}

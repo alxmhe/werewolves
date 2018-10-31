@@ -1,7 +1,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Werewolves online</title>
+  <title>Werewolves</title>
 </head>
 
 <body>
@@ -28,7 +28,7 @@
 
 <template name="dashboard">
   {{#if currentUser.profile.username}}
-    <h2>Hello, {{currentUser.profile.username}}. Let's play Werewolves!</h2>
+    {{!--<h2>Hello, {{currentUser.profile.username}}. Let's play Werewolves!</h2>--}}
     <hr />
     {{#if gameIsOver}}
       {{> gameOver}}
@@ -67,7 +67,7 @@
 
 <template name="game">
   {{#if startedAt}}
-    <h3>Game {{_id}}</h3>
+    <h3>Ongoing game</h3>
     {{#if isGameMaster}}
       <p>You are the GAMEMASTER, you have a responsability to watch over the game.<br/>In case the game is stuck, kill it with <button class="btn btn-danger btn-sm js-killGame">FIRE</button></p>
     {{/if}}
@@ -109,7 +109,7 @@
     <div class="row">
       <div class="col-8">
         <div class="jumbotron">
-          <h3>New game !</h3>
+          <h3>New game!</h3>
           {{#if player}}
             <button class="btn btn-danger js-leaveGame">Leave the game</button>
             {{#if hasEnoughPlayers}}
@@ -118,15 +118,22 @@
           {{else}}
             <button class="btn btn-primary js-joinGame">Join the game</button>
           {{/if}}
-          <h4>Current players</h4>
-          <ul class="players">
-          {{#each players}}
-            <li class="playerItem">
-              {{_id}}
-              {{username}}
-            </li>
-          {{/each}}
-          </ul>
+          {{#if players}}
+            <hr/>
+            <h4>Current players</h4>
+            <ul class="players">
+            {{#each players}}
+              <li class="playerItem">
+                {{_id}}
+                {{username}}
+              </li>
+            {{/each}}
+            </ul>
+            {{#if player}}
+              <hr/>
+              {{> chatbox chatId=chatId players=players}}
+            {{/if}}
+          {{/if}}
         </div>
       </div>
       <div class="col-4">
@@ -222,7 +229,7 @@
       <h6>Choose whom to lynch.</h6>
       <ul>
         {{#each alivePlayers}}
-          <li><button class="btn btn-danger js-lynch">{{username}}</button></li>
+          <li><button class="btn btn-primary js-lynch">{{username}}</button></li>
         {{/each}}
       </ul>
     {{/if}}
@@ -309,13 +316,20 @@
 <template name="chatbox">
   {{#if canPost}}
     <form class="js-sendMessage">
-      <input type="text" class="form-control" name="message">
-      <button type="submit" class="btn btn-primary">Send message</button>
+      <div class="input-group">
+        <input type="text" class="form-control" name="message" placeholder="{{placeholder}}">
+        <div class="input-group-append">
+          <button type="submit" class="btn btn-primary">Send</button>
+        </div>
+      </div>
     </form>
   {{/if}}
-  <ul>
+  <ul class="messages">
   {{#each messages}}
-    <li><em><strong>{{authorName}}</strong> said</em><blockquote>{{content}}</blockquote></li>
+    <li>
+      <span class="username">{{authorName}}</span>
+      <div class="body">{{content}}</div>
+    </li>
   {{/each}}
   </ul>
 </template>

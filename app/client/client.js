@@ -1,7 +1,8 @@
 import { Meteor } from 'meteor/meteor'
 import { Template } from 'meteor/templating'
 import { Session } from 'meteor/session'
-import 'bootstrap/dist/css/bootstrap.css'
+import './bootstrap.min.css'
+import './style.css'
 import './index.html'
 
 Meteor.subscribe('allGames')
@@ -158,6 +159,10 @@ Template.game.helpers({
         ...getRolesObject(p.role)
       }
     })
+  },
+  isPlayer() {
+    const userId = Meteor.userId()
+    return this.players.find(p => p.userId === userId)
   },
   onlineUsers() {
     return Meteor.users.find({})
@@ -451,6 +456,10 @@ Template.ongoingNight.events({
 })
 
 Template.chatbox.helpers({
+  placeholder() {
+    const chat = Chats.findOne(this.chatId)
+    return "Message the " + chat.werewolvesOnly ? "werewolves" : "players"
+  },
   canPost() {
     const player = this.players.find(p => p.userId === Meteor.userId())
     return player && !player.isDead
@@ -460,7 +469,7 @@ Template.chatbox.helpers({
     return chat && chat.messages.map(m => {
       return {
         ...m,
-        authorName: this.players.find(p => p.userId === m.author).username
+        authorName: Meteor.users.find().fetch().find(u => u._id === m.author).profile.username
       }
     }).reverse()
   }
