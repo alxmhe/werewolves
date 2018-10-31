@@ -10,7 +10,7 @@ Meteor.publish('allGames', function() {
     let roles = []
     game.players.forEach(p => {
       if (!p.isDead && roles.indexOf(p.role) === -1)
-      roles.push(p.role)
+        roles.push(p.role)
     })
     return {
       ...game,
@@ -29,13 +29,13 @@ Meteor.publish('allGames', function() {
   var self = this
   var observer = Games.find().observe({
     added: function (game) {
-      self.added('games', game._id, transform(game));
+      self.added('games', game._id, transform(game))
     },
     changed: function (newGame, oldGame) {
-      self.changed('games', newGame._id, transform(newGame));
+      self.changed('games', newGame._id, transform(newGame))
     },
     removed: function (oldGame) {
-      self.removed('games', oldGame._id);
+      self.removed('games', oldGame._id)
     }
   })
 
@@ -52,7 +52,9 @@ Meteor.publish('allChats', () => {
 })
 
 Meteor.publish('allUsers', function() {
-  return Meteor.users.find({ "status.online": true }, { fields: { "status.online": 1, "profile.username": 1 }})
+  const currentGame = Games.findOne({ createdAt: { $ne: null }, endedAt: null })
+  const players = currentGame ? currentGame.players.map(p => p.userId) : []
+  return Meteor.users.find({ $or: [{ "status.online": true }, { "_id" : { $in: players }}]}, { fields: { "status.online": 1, "profile.username": 1 }})
 })
 
 function computeDeaths(game) {

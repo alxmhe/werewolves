@@ -23,7 +23,7 @@ Meteor.startup(function() {
   }
 })
 
-function getRolesObject(role) {
+function getRolesObject(role = "unknown") {
   return {
     isWerewolf: role === "werewolf",
     isSeer: role === "seer",
@@ -154,14 +154,15 @@ Template.game.helpers({
   },
   players() {
     return this.players.map(p => {
+      const role = p.role || "unknown"
       return {
         ...p,
-        ...getRolesObject(p.role)
+        ...getRolesObject(role)
       }
     })
   },
   onlineUsers() {
-    return Meteor.users.find({})
+    return Meteor.users.find({ "status.online": true })
   },
   remainingWerewolves() {
     let remainder = this.nbWerewolves
@@ -463,9 +464,10 @@ Template.chatbox.helpers({
   messages() {
     const chat = Chats.findOne(this.chatId)
     return chat && chat.messages.map(m => {
+      const author = Meteor.users.findOne(m.author)
       return {
         ...m,
-        authorName: Meteor.users.find().fetch().find(u => u._id === m.author).profile.username
+        authorName: author && author.profile && author.profile.username ? author.profile.username : "Anonymous"
       }
     }).reverse()
   }
