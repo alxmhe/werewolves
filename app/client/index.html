@@ -113,7 +113,7 @@
           {{#if player}}
             <button class="btn btn-danger js-leaveGame">Leave the game</button>
             {{#if hasEnoughPlayers}}
-              <button class="btn btn-primary js-startGame">Start the game</button>
+              <button class="btn btn-success js-startGame">Start the game</button>
             {{/if}}
           {{else}}
             <button class="btn btn-primary js-joinGame">Join the game</button>
@@ -124,7 +124,6 @@
             <ul class="players">
             {{#each players}}
               <li class="playerItem">
-                {{_id}}
                 {{username}}
               </li>
             {{/each}}
