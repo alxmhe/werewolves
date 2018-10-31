@@ -160,10 +160,6 @@ Template.game.helpers({
       }
     })
   },
-  isPlayer() {
-    const userId = Meteor.userId()
-    return this.players.find(p => p.userId === userId)
-  },
   onlineUsers() {
     return Meteor.users.find({})
   },
@@ -458,7 +454,7 @@ Template.ongoingNight.events({
 Template.chatbox.helpers({
   placeholder() {
     const chat = Chats.findOne(this.chatId)
-    return "Message the " + chat.werewolvesOnly ? "werewolves" : "players"
+    return "Message the " + (chat.werewolvesOnly ? "werewolves" : "players")
   },
   canPost() {
     const player = this.players.find(p => p.userId === Meteor.userId())
