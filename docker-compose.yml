@@ -12,7 +12,7 @@ services:
       - ./data/db:/data/db
 
   web:
-    image: node:latest
+    image: node:carbon
     restart: always
     environment:
       MONGO_URL: mongodb://admin:password@database/werewolf?authSource=admin
