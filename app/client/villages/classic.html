@@ -1,13 +1,36 @@
-<template name="storyIntro">
-  <p class="lead">Full moon every night!</p>
-  <p>In the village, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects werewolves are attacking the village.</p>
+<template name="classic_storyIntro">
+  <div class="row mb-3">
+    <div class="col-6">
+      <img src="/village-classic-matchmaking.jpg" class="img-fluid" alt="Photo by Tony Detroit on Unsplash" title="Photo by Tony Detroit on Unsplash" />
+    </div>
+    <div class="col-6">
+      <p class="lead">In the village, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects werewolves are attacking the village.</p>
+    </div>
+  </div>
+  <h5>How to play</h5>
+  <p>
+    Save the village or eat everyone.<br/>
+    Werewolves know each other and will kill 1 villager every night.<br/>
+    Other villagers don't know each other.<br/>
+    Villagers who are still alive vote during the day.<br/>
+    A witch has 2 potions she may use during a night. 1 to kill and 1 to heal.<br/>
+    A seer can discover the identity of 1 villager every night.<br/>
+    A hunter can kill 1 villager when he dies.<br/>
+    A cupid can make 2 villagers fall in love. If one dies the other will die too.<br/>
+    A mayor has his vote counted twice.
+  </p>
 </template>
 
-<template name="storyGameOver">
+<template name="classic_storyGameOver">
   <h3>Game over !</h3>
   {{#unless winner.team}}
-    <p>It's actually a draw, so everybody loses because the village is on fire.</p>
+    <p>It's actually a draw, so everybody lose.</p>
   {{else}}
     <p>Chicken dinner for <strong>{{winner.team}}</strong> ! {{winner.count}} survived the massacre.</p>
   {{/unless}}
+</template>
+
+<template name="classic_storyMatchmaking">
+  <h3>Welcome to the Village!</h3>
+  <p>Do not be afraid.</p>
 </template>

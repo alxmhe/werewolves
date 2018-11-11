@@ -283,7 +283,7 @@ Meteor.methods({
     })
   },
 
-  createGame() {
+  createGame(story) {
     if (!this.userId)
       throw new Meteor.Error('You need to log in.')
 
@@ -293,6 +293,7 @@ Meteor.methods({
           userId: this.userId
         }
       ],
+      story: story,
       createdAt: new Date()
     })
     return Games.update(gameId, {

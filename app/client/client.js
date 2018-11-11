@@ -58,6 +58,15 @@ Template.registerHelper("currentUser", function() {
 })
 
 Template.dashboard.helpers({
+  stories() {
+    return [
+      {
+        value: "classic",
+        name: "Classic Village",
+        default: true
+      }
+    ]
+  },
   currentGame() {
     return Games.findOne({ createdAt: { $ne: null }, endedAt: null })
   },
@@ -71,8 +80,10 @@ Template.dashboard.helpers({
 })
 
 Template.dashboard.events({
-  'click .js-createGame'() {
-    Meteor.call('createGame', (err, data) => {
+  'submit form.js-createGame'(e) {
+    e.preventDefault()
+    const story = e.target.story && e.target.story.value || "classic"
+    Meteor.call('createGame', story, (err, data) => {
       if (err)
         console.error(err.message)
     })
@@ -87,6 +98,11 @@ Template.dashboard.events({
 })
 
 Template.gameOver.helpers({
+  storyGameOver() {
+    const gameId = Session.get('gameId', false)
+    const game = gameId && Games.findOne({_id: gameId, endedAt: { $ne: null }})
+    return (game && game.theme || "classic") + "_storyGameOver"
+  },
   winner() {
     const gameId = Session.get('gameId', false)
     const game = gameId && Games.findOne({_id: gameId, endedAt: { $ne: null }})
@@ -120,6 +136,12 @@ Template.room.helpers({
 })
 
 Template.matchmaking.helpers({
+  minimumPlayers() {
+    return GAME_MINIMUM_PLAYERS
+  },
+  storyMatchmaking() {
+    return (this.game.story || "classic") + "_storyMatchmaking"
+  },
   hasEnoughPlayers() {
     return this.game.players.length >= GAME_MINIMUM_PLAYERS
   },
@@ -179,6 +201,7 @@ Template.board.events({
       Meteor.call('killGame', this.game._id, (err, data) => {
         if (err)
           console.error(err.message)
+        Session.set("gameId", null)
       })
   }
 })
@@ -200,6 +223,12 @@ Template.ongoingGame.helpers({
   },
   deaths() {
     return 0
+  }
+})
+
+Template.intro.helpers({
+  storyIntro() {
+    return (this.game.theme || "classic") + "_storyIntro"
   }
 })
 

@@ -50,6 +50,10 @@ Games.attachSchema(new SimpleSchema({
     type: String,
     defaultValue: "system"
   },
+  story: {
+    type: String,
+    defaultValue: "classic"
+  },
   players: Array,
   "players.$": Object,
   "players.$.userId": String,
