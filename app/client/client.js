@@ -4,7 +4,7 @@ import { Session } from 'meteor/session'
 import { ReactiveVar } from 'meteor/reactive-var'
 import './bootstrap.min.css'
 import './style.css'
-import './villages/classic.html'
+import './stories/classic'
 import './index.html'
 
 Meteor.subscribe('allGames')
@@ -106,6 +106,7 @@ Template.gameOver.helpers({
   winner() {
     const gameId = Session.get('gameId', false)
     const game = gameId && Games.findOne({_id: gameId, endedAt: { $ne: null }})
+    console.log(game)
     if (!game)
       return { team: null }
     let team = null
@@ -115,9 +116,15 @@ Template.gameOver.helpers({
       team = "werewolves"
     else if (remainingVillagers > 0)
       team = "villagers"
+    console.log({
+      team,
+      count: remainingWerewolves + remainingVillagers,
+      isWerewolf: team === "werewolves"
+    })
     return {
       team,
-      count: remainingWerewolves + remainingVillagers
+      count: remainingWerewolves + remainingVillagers,
+      isWerewolf: team === "werewolves"
     }
   }
 })
@@ -229,6 +236,9 @@ Template.ongoingGame.helpers({
 Template.intro.helpers({
   storyIntro() {
     return (this.game.theme || "classic") + "_storyIntro"
+  },
+  storyInstructions() {
+    return (this.game.theme || "classic") + "_storyInstructions"
   }
 })
 

@@ -257,10 +257,10 @@ function computeVotesLynch(gameId) {
         return game.players.find(voter => voter.userId === v.userId).role === "mayor" ? 2 : 1
       }).reduce((acc, val) => acc + val, 0)
     }
-  })
+  }).filter(r => r.votesAgainst > 0)
   results.sort((val1, val2) => val1.votesAgainst < val2.votesAgainst)
 
-  if (results.length < 2 || results[0].votesAgainst !== results[1].votesAgainst)
+  if (results.length > 0 && results[0].votesAgainst !== results[1].votesAgainst)
     day.lynched = results[0].userId
 
   return Games.update(gameId, {

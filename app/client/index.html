@@ -366,11 +366,13 @@
 </template>
 
 <template name="gameOver">
-  {{> Template.dynamic template=storyGameOver winner=winner}}
+  {{> Template.dynamic template=storyGameOver data=winner}}
   <button class="btn btn-primary js-dismiss">Dismiss</button>
 </template>
 
 <template name="intro">
   {{> Template.dynamic template=storyIntro}}
-  <button class="btn btn-primary js-markIntroRead mt-3">Ready to continue</button>
+  <button class="btn btn-primary js-markIntroRead mt-3 mb-3">Ready to continue</button>
+  <h5>How to play</h5>
+  {{> Template.dynamic template=storyInstructions}}
 </template>

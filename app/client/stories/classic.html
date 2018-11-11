@@ -1,15 +1,17 @@
 <template name="classic_storyIntro">
   <div class="row mb-3">
-    <div class="col-6">
+    <div class="col-lg-6">
       <img src="/village-classic-matchmaking.jpg" class="img-fluid" alt="Photo by Tony Detroit on Unsplash" title="Photo by Tony Detroit on Unsplash" />
     </div>
-    <div class="col-6">
+    <div class="col-lg-6">
       <p class="lead">In the village, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects werewolves are attacking the village.</p>
     </div>
   </div>
-  <h5>How to play</h5>
+</template>
+
+<template name="classic_storyInstructions">
   <p>
-    Save the village or eat everyone.<br/>
+    Save the village or eat everyone!<br/>
     Werewolves know each other and will kill 1 villager every night.<br/>
     Other villagers don't know each other.<br/>
     Villagers who are still alive vote during the day.<br/>
@@ -22,11 +24,18 @@
 </template>
 
 <template name="classic_storyGameOver">
-  <h3>Game over !</h3>
-  {{#unless winner.team}}
-    <p>It's actually a draw, so everybody lose.</p>
+  {{#unless team}}
+    <h3>It's a draw!</h3>
+    <p>Everybody lose.</p>
   {{else}}
-    <p>Chicken dinner for <strong>{{winner.team}}</strong> ! {{winner.count}} survived the massacre.</p>
+    {{#if isWerewolf}}
+      <h3>The werewolves win!</h3>
+      <p>Nobody left to eat.</p>
+    {{else}}
+      <h3>The village is safe!</h3>
+      <p>All werewolves have been killed.</p>
+    {{/if}}
+    <p>{{count}} player(s) survived until the end.</p>
   {{/unless}}
 </template>
 
