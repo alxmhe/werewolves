@@ -1,8 +1,10 @@
 import { Meteor } from 'meteor/meteor'
 import { Template } from 'meteor/templating'
 import { Session } from 'meteor/session'
+import { ReactiveVar } from 'meteor/reactive-var'
 import './bootstrap.min.css'
 import './style.css'
+import './villages/classic.html'
 import './index.html'
 
 Meteor.subscribe('allGames')
@@ -22,20 +24,6 @@ Meteor.startup(function() {
     .catch(function(error) {})
   }
 })
-
-function getRolesObject(role = "unknown") {
-  return {
-    isWerewolf: role === "werewolf",
-    isSeer: role === "seer",
-    isWitch: role === "witch",
-    isHunter: role === "hunter",
-    isPriest: role === "priest",
-    isPrince: role === "prince",
-    isCupid: role === "cupid",
-    isMayor: role === "mayor",
-    isVillager: role === "villager"
-  }
-}
 
 function notifyPlayer(type = "poke") {
   if (swRegistration) {
@@ -65,15 +53,8 @@ function notifyPlayer(type = "poke") {
   }
 }
 
-Template.registerHelper('currentUser', function() {
+Template.registerHelper("currentUser", function() {
   return Meteor.user()
-})
-
-Template.registerHelper('hasRole', function(gameId, role) {
-  const userId = Meteor.userId()
-  const game = userId && Games.findOne(gameId)
-  const player = game && game.players.find(p => p.userId === userId)
-  return player && player.role === role
 })
 
 Template.dashboard.helpers({
@@ -94,7 +75,6 @@ Template.dashboard.events({
     Meteor.call('createGame', (err, data) => {
       if (err)
         console.error(err.message)
-      console.log("data", data)
     })
   },
   'submit .js-saveUsername'(e) {
@@ -102,7 +82,6 @@ Template.dashboard.events({
     Meteor.call('saveUsername', e.currentTarget.username.value, (err, data) => {
       if (err)
         console.error(err.message)
-      console.log("data", data)
     })
   }
 })
@@ -133,48 +112,60 @@ Template.gameOver.events({
   }
 })
 
-Template.game.helpers({
+Template.room.helpers({
   player() {
-    const userId = Meteor.userId()
-    const p = this.players.find(p => p.userId === userId)
-    return p && {
-      ...p,
-      ...getRolesObject(p.role)
-    }
-  },
-  isGameMaster() {
-    const userId = Meteor.userId()
-    return this.players.find(p => p.userId === userId) && this.gameMaster === userId
-  },
+    const { game: { players }} = this
+    return players && players.find(p => p.userId === Meteor.userId())
+  }
+})
+
+Template.matchmaking.helpers({
   hasEnoughPlayers() {
-    return this.players.length >= GAME_MINIMUM_PLAYERS
-  },
-  isNight() {
-    return this.stage === 'night'
-  },
-  players() {
-    return this.players.map(p => {
-      const role = p.role || "unknown"
-      return {
-        ...p,
-        ...getRolesObject(role)
-      }
-    })
+    return this.game.players.length >= GAME_MINIMUM_PLAYERS
   },
   onlineUsers() {
     return Meteor.users.find({ "status.online": true })
+  }
+})
+
+
+Template.matchmaking.events({
+  'click .js-joinGame'() {
+    Meteor.call('joinGame', this.game._id, (err, data) => {
+      if (err)
+        console.error(err.message)
+    })
+  },
+  'click .js-leaveGame'() {
+    Meteor.call('leaveGame', this.game._id, (err, data) => {
+      if (err)
+        console.error(err.message)
+    })
+  },
+  'click .js-startGame'() {
+    Meteor.call('startGame', this.game._id, (err, data) => {
+      if (err)
+        console.error(err.message)
+    })
+  }
+})
+
+Template.board.helpers({
+  isGameMaster(player) {
+    return player && this.game.gameMaster === player.userId
   },
   remainingWerewolves() {
-    let remainder = this.nbWerewolves
-    this.players.forEach(p => {
+    let remainder = this.game.nbWerewolves
+    this.game.players.forEach(p => {
       if (p.isDead && p.role === "werewolf")
         --remainder
     })
     return remainder
   },
   remainingVillagers() {
-    let remainder = this.players.length - this.nbWerewolves
-    this.players.forEach(p => {
+    const { players, nbWerewolves } = this.game
+    let remainder = players.length - nbWerewolves
+    players.forEach(p => {
       if (p.isDead && p.role !== "werewolf")
         --remainder
     })
@@ -182,80 +173,48 @@ Template.game.helpers({
   }
 })
 
-Template.game.events({
-  'click .js-joinGame'() {
-    Meteor.call('joinGame', this._id, (err, data) => {
-      if (err)
-        console.error(err.message)
-      console.log("data", data)
-    })
-  },
-  'click .js-leaveGame'() {
-    Meteor.call('leaveGame', this._id, (err, data) => {
-      if (err)
-        console.error(err.message)
-      console.log("data", data)
-    })
-  },
-  'click .js-startGame'() {
-    Meteor.call('startGame', this._id, (err, data) => {
-      if (err)
-        console.error(err.message)
-      console.log("data", data)
-    })
-  },
+Template.board.events({
   'click .js-killGame'() {
     if (window.confirm('Are you sure you want to terminate the current game ?'))
-      Meteor.call('killGame', this._id, (err, data) => {
+      Meteor.call('killGame', this.game._id, (err, data) => {
         if (err)
           console.error(err.message)
-        console.log("data", data)
       })
   }
 })
 
-Template.ongoingGame.onRendered(function() {
-  const game = Games.findOne(this.data._id)
+Template.ongoingGame.onCreated(function() {
+  Session.set("markIntroRead", false)
+  const { game, player } = Template.currentData()
   if (game) {
     Session.set("gameId", game._id)
-    if (game.players.find(p => p.userId === Meteor.userId()))
+    if (player)
       notifyPlayer("start")
   }
 })
 
 Template.ongoingGame.helpers({
-  isDead() {
-    const player = this.players.find(p => p.userId === Meteor.userId())
-    return player && player.isDead
-  },
-  isWitness() {
-    const player = this.players.find(p => p.userId === Meteor.userId())
-    return !player
-  },
   title() {
-    const isIntro = this.index === 0 && !Session.get('markIntroRead', false)
-    return !isIntro ? (!this.isNight ? "Day " : "Night ") + (this.index + 1) : null
-  },
-  isIntro() {
-    return !Session.get('markIntroRead', false)
+    const isIntro = this.game.index === 0 && !Session.get('markIntroRead', false)
+    return !isIntro ? (!this.game.isNight ? "Day " : "Night ") + (this.game.index + 1) : null
   },
   deaths() {
     return 0
   }
 })
 
-Template.ongoingGame.events({
+Template.intro.events({
   'click .js-markIntroRead'() {
     Session.set('markIntroRead', true)
   }
 })
 
-Template.ongoingDay.onCreated(function() {
+Template.day.onCreated(function() {
   this.timer = null
 })
 
-Template.ongoingDay.onRendered(function() {
-  const game = Games.findOne(this.data._id)
+Template.day.onRendered(function() {
+  const { game } = this.data
   if (game) {
     Session.set('timer-day-'+game._id, GAME_DAY_DURATION)
     this.timer = setInterval(function() {
@@ -269,185 +228,180 @@ Template.ongoingDay.onRendered(function() {
     }, 1000)
     // Notify of vote
     const user = Meteor.user()
-    if (user && user.status && user.status.idle && game.players.find(p => p.userId === Meteor.userId()))
+    if (user && user.status && user.status.idle && this.data.player)
       notifyPlayer("vote")
   }
 })
 
-Template.ongoingDay.helpers({
+Template.day.helpers({
   day() {
-    return this.days.find(d => d.index === this.index)
+    return this.game.days.find(d => d.index === this.game.index)
   },
-  player() {
-    const userId = Meteor.userId()
-    const p = this.players.find(p => p.userId === userId)
-    return p && {
-      ...p,
-      ...getRolesObject(p.role)
-    }
+  isIntro() {
+    return !Session.get('markIntroRead', false)
+  },
+  playerHasRole(role) {
+    return this.player === role
   },
   alivePlayers() {
-    return this.players.filter(p => !p.isDead)
+    return this.game.players.filter(p => !p.isDead)
   },
   hasLynched() {
-    const player = this.players.find(p => !p.isDead && p.userId === Meteor.userId())
-    if (player) {
-      const day = this.days.find(d => d.index === this.index)
-      const vote = day && day.votes && day.votes.find(v => v.userId === player.userId)
-      return vote && vote.target && this.players.find(p => p.userId === vote.target)
+    if (this.player && !this.player.isDead) {
+      const day = this.game.days.find(d => d.index === this.index)
+      const vote = day && day.votes && day.votes.find(v => v.userId === this.player.userId)
+      return vote && vote.target && this.game.players.find(p => p.userId === vote.target)
     }
     return false
   },
   waitHunter() {
-    return this.players.find(p => p.role === "hunter" && p.isDead) && !this.days.find(d => !!d.hunted)
+    return this.game.players.find(p => p.role === "hunter" && p.isDead) && !this.game.days.find(d => !!d.hunted)
   },
   remainingTime() {
-    return Math.floor(Session.get('timer-day-'+this._id, 0) / 1000)
+    return Math.floor(Session.get('timer-day-'+this.game._id, 0) / 1000)
   }
 })
 
-Template.ongoingDay.events({
+Template.day.events({
   'click .js-lynch'(e, t) {
-    Meteor.call('voteLynch', t.data._id, this.userId, (err, data) => {
+    Meteor.call('voteLynch', t.data.game._id, this.userId, (err, data) => {
       if (err)
         console.error(err.message)
     })
   },
   'click .js-hunt'(e, t) {
-    Meteor.call('hunt', t.data._id, this.userId, (err, data) => {
+    Meteor.call('hunt', t.data.game._id, this.userId, (err, data) => {
       if (err)
         console.error(err.message)
     })
   }
 })
 
-Template.ongoingNight.onCreated(function() {
-  const game = Games.findOne(this.data._id)
-  if (game && game.players.find(p => p.userId === Meteor.userId()))
+Template.night.onCreated(function() {
+  if (this.data.player)
     notifyPlayer("night")
 })
 
-Template.ongoingNight.helpers({
+Template.night.helpers({
   night() {
-    return this.nights.find(n => n.index === this.index)
+    return this.game.isNight && this.game.nights.find(n => n.index === this.game.index)
   },
-  player() {
-    const userId = Meteor.userId()
-    const p = this.players.find(p => p.userId === userId)
-    return p && {
-      ...p,
-      ...getRolesObject(p.role)
-    }
+  playerHasRole(role) {
+    return this.player === role
   },
   waitSeer() {
-    const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
-    return night && this.roles.indexOf('seer') !== -1 && !night.seered
+    const { nights, index, isNight, roles } = this.game
+    const night = isNight && nights && nights.find(n => n.index === index)
+    return night && roles.indexOf('seer') !== -1 && !night.seered
   },
   waitCupid() {
-    const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
-    return night && this.roles.indexOf('cupid') !== -1 && (!night.cupids || night.cupids.length <= 1)
+    const { nights, index, isNight, roles } = this.game
+    const night = isNight && nights && nights.find(n => n.index === index)
+    return night && roles.indexOf('cupid') !== -1 && (!night.cupids || night.cupids.length <= 1)
   },
   waitWitch() {
-    const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
-    const noMorePotions = !!this.nights.find(n => !!n.poisoned) && !!this.nights.find(n => !!n.healed)
-    return night && this.roles.indexOf('witch') !== -1 && !night.witchDone && !noMorePotions
+    const { nights, index, isNight, roles } = this.game
+    const night = isNight && nights && nights.find(n => n.index === index)
+    const noMorePotions = !!nights.find(n => !!n.poisoned) && !!nights.find(n => !!n.healed)
+    return night && roles.indexOf('witch') !== -1 && !night.witchDone && !noMorePotions
   },
   waitWerewolves() {
-    const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
-    return night && this.roles.indexOf('werewolf') !== -1 && !night.werewolvesDone
+    const { nights, index, isNight, roles } = this.game
+    const night = isNight && nights && nights.find(n => n.index === index)
+    return night && roles.indexOf('werewolf') !== -1 && !night.werewolvesDone
   },
   showWerewolvesChat() {
-    return this.nbWerewolves > 1
+    return this.game.nbWerewolves > 1
   },
   werewolfHasVoted() {
-    const player = this.players.find(p => p.userId === Meteor.userId() && p.role === "werewolf" && !p.isDead)
-    if (player) {
-      const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
+    const { nights, index, isNight, players } = this.game
+    const { player } = this
+    if (player && player.role === "werewolf" && !player.isDead) {
+      const night = isNight && nights && nights.find(n => n.index === index)
       const vote = night.votesAttack.find(v => v.userId === player.userId)
-      return vote && vote.target && this.players.find(p => p.userId === vote.target)
+      return vote && vote.target && players.find(p => p.userId === vote.target)
     }
     return false
   },
   witchHasPoison() {
-    const player = this.players.find(p => p.userId === Meteor.userId() && p.role === "witch" && !p.isDead)
-    if (player) {
-      const nightPoisoned = this.nights && this.nights.find(n => !!n.poisoned)
-      return !nightPoisoned && !Session.get('witchPoisoned-' + this._id, false)
+    const { _id, nights } = this.game
+    const { player } = this
+    if (player && player.role === "witch" && !player.isDead) {
+      const nightPoisoned = nights && nights.find(n => !!n.poisoned)
+      return !nightPoisoned && !Session.get('witchPoisoned-' + _id, false)
     }
     return false
   },
   witchPoisonedPlayer() {
-    const poisoned = Session.get('witchPoisoned-' + this._id, null)
-    return poisoned && this.players.find(p => p.userId === poisoned)
+    const poisoned = Session.get('witchPoisoned-' + this.game._id, null)
+    return poisoned && this.game.players.find(p => p.userId === poisoned)
   },
   witchHasHealing() {
-    const player = this.players.find(p => p.userId === Meteor.userId() && p.role === "witch" && !p.isDead)
-    if (player) {
-      const nightHealed = this.nights && this.nights.find(n => !!n.healed)
-      return !nightHealed && !Session.get('witchHealed-' + this._id, false)
+    const { _id, nights } = this.game
+    const { player } = this
+    if (player && player.role === "witch" && !player.isDead) {
+      const nightHealed = nights && nights.find(n => !!n.healed)
+      return !nightHealed && !Session.get('witchHealed-' + _id, false)
     }
     return false
   },
   witchHealedPlayer() {
-    const healed = Session.get('witchPoisoned-' + this._id, null)
-    return healed && this.players.find(p => p.userId === poisoned)
+    const healed = Session.get('witchPoisoned-' + this.game._id, null)
+    return healed && this.game.players.find(p => p.userId === healed)
   },
   seerPeople() {
-    const player = this.players.find(p => p.userId === Meteor.userId() && p.role === "seer" && !p.isDead)
-    if (player)
-      return this.players.filter(p => !p.isDead && p.userId !== player.userId)
+    const { player, game } = this
+    if (player && player.role === "seer" && !player.isDead)
+      return game.players.filter(p => !p.isDead && p.userId !== player.userId)
     return []
   },
   witchDeadPeople() {
-    const player = this.players.find(p => p.userId === Meteor.userId() && p.role === "witch" && !p.isDead)
-    if (player) {
+    const { nights, index, isNight, players } = this.game
+    const { player } = this
+    if (player && player.role === "witch" && !player.isDead) {
       let dead = []
-      const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
+      const night = isNight && nights && nights.find(n => n.index === index)
       const deaths = night && [night.attacked]
-      return deaths && this.players.filter(p => !p.isDead && deaths.indexOf(p.userId) !== -1)
+      return deaths && players.filter(p => !p.isDead && deaths.indexOf(p.userId) !== -1)
     }
     return []
   },
   alivePeople() {
+    const { nights, index, isNight, players } = this.game
     let dead = []
-    const night = this.isNight && this.nights && this.nights.find(n => n.index === this.index)
+    const night = isNight && nights && nights.find(n => n.index === index)
     const deaths = night && [night.attacked]
-    return deaths && this.players.filter(p => !p.isDead && deaths.indexOf(p.userId) === -1)
+    return deaths && players.filter(p => !p.isDead && deaths.indexOf(p.userId) === -1)
   }
 })
 
-Template.ongoingNight.events({
+Template.night.events({
   'click .js-seer'(e, t) {
-    Meteor.call('seer', t.data._id, this.userId, (err, seered) => {
+    Meteor.call('seer', t.data.game._id, this.userId, (err, seered) => {
       if (err)
         console.error(err.message)
       alert(this.username + ' is ' + seered)
     })
   },
   'click .js-werewolf'(e, t) {
-    const gameId = t.data._id
-    Meteor.call('voteAttack', gameId, this.userId, (err, data) => {
+    Meteor.call('voteAttack', t.data.game._id, this.userId, (err, data) => {
       if (err)
         console.error(err.message)
-      console.log("data", data)
     })
   },
   'click .js-poison'(e, t) {
-    const gameId = t.data._id
-    Session.set("witchPoisoned-"+gameId, this.userId)
+    Session.set("witchPoisoned-"+t.data.game._id, this.userId)
   },
   'click .js-heal'(e, t) {
-    const gameId = t.data._id
-    Session.set("witchHealed-"+gameId, this.userId)
+    Session.set("witchHealed-"+t.data.game._id, this.userId)
   },
   'click .js-witch'(e, t) {
-    const gameId = t.data._id
+    const gameId = t.data.game._id
     const poisoned = Session.get("witchPoisoned-"+gameId, null)
     const healed = Session.get("witchHealed-"+gameId, null)
     Meteor.call('witch', gameId, poisoned, healed, (err, data) => {
       if (err)
         console.error(err.message)
-      console.log("data", data)
     })
   }
 })
@@ -455,19 +409,18 @@ Template.ongoingNight.events({
 Template.chatbox.helpers({
   placeholder() {
     const chat = Chats.findOne(this.chatId)
-    return "Message the " + (chat.werewolvesOnly ? "werewolves" : "players")
+    return chat ? ("Message the " + (chat.werewolvesOnly ? "werewolves" : "players")) : ""
   },
   canPost() {
-    const player = this.players.find(p => p.userId === Meteor.userId())
-    return player && !player.isDead
+    return this.player && !this.player.isDead
   },
   messages() {
     const chat = Chats.findOne(this.chatId)
-    return chat && chat.messages.map(m => {
-      const author = Meteor.users.findOne(m.author)
+    return chat && chat.messages && chat.messages.map(m => {
+      const author = m.author && this.game.players && this.game.players.find(p => p.userId === m.author)
       return {
         ...m,
-        authorName: author && author.profile && author.profile.username ? author.profile.username : "Anonymous"
+        authorName: author && author.username ? author.username : "Anonymous"
       }
     }).reverse()
   }
@@ -481,7 +434,6 @@ Template.chatbox.events({
       Meteor.call("sendMessage", this.chatId, message, (err, data) => {
         if (err)
           console.error(err.message)
-        console.log("data", data)
       })
     e.currentTarget.reset()
   }

@@ -27,32 +27,7 @@
 </template>
 
 <template name="dashboard">
-  {{#if currentUser.profile.username}}
-    {{!--<h2>Hello, {{currentUser.profile.username}}. Let's play Werewolves!</h2>--}}
-    <hr />
-    {{#if gameIsOver}}
-      {{> gameOver}}
-    {{else}}
-      {{#if currentGame}}
-        {{> game currentGame}}
-      {{else}}
-        <a href="#" class="btn btn-primary js-createGame">Create a new game</a>
-        <hr/>
-        {{!-- @TODO : Browse previous games.
-        {{#if games}}
-          <h3>Previous games</h3>
-          <ul class="games">
-            {{#each games}}
-            <li class="gameItem">
-              {{> gameItem}}
-            </li>
-            {{/each}}
-          </ul>
-        {{/if}}
-        --}}
-      {{/if}}
-    {{/if}}
-  {{else}}
+  {{#unless currentUser.profile.username}}
     <div class="jumbotron">
       <h2 class="display-4">Choose your username</h2>
       <form class="js-saveUsername">
@@ -62,89 +37,139 @@
         <button type="submit" name="submit" class="btn btn-primary">Save</button>
       </form>
     </div>
+  {{else}}
+    {{!--<h2>Hello, {{currentUser.profile.username}}. Let's play Werewolves!</h2>--}}
+    <hr />
+    {{#if gameIsOver}}
+      {{> gameOver}}
+    {{else if currentGame}}
+      {{> room game=currentGame}}
+    {{else}}
+      <button class="btn btn-primary js-createGame">Create a new game</button>
+      <hr/>
+      {{!-- @TODO : Browse previous games.
+      {{#if games}}
+        <h3>Previous games</h3>
+        <ul class="games">
+          {{#each games}}
+          <li class="gameItem">
+            {{> gameItem}}
+          </li>
+          {{/each}}
+        </ul>
+      {{/if}}
+      --}}
+    {{/if}}
+  {{/unless}}
+</template>
+
+<template name="room">
+  {{#if game.startedAt}}
+    {{> board game=game player=player}}
+  {{else}}
+    {{> matchmaking game=game player=player}}
   {{/if}}
 </template>
 
-<template name="game">
-  {{#if startedAt}}
-    <h3>Ongoing game</h3>
-    {{#if isGameMaster}}
-      <p>You are the GAMEMASTER, you have a responsability to watch over the game.<br/>In case the game is stuck, kill it with <button class="btn btn-danger btn-sm js-killGame">FIRE</button></p>
-    {{/if}}
-    <div class="row">
-      <div class="col-md-8">
-        <div class="card">
-          {{> ongoingGame}}
-        </div>
+<template name="matchmaking">
+  <div class="row">
+    <div class="col-8">
+      <div class="jumbotron">
+        <h3>New game!</h3>
+        {{#if player}}
+          <button class="btn btn-danger js-leaveGame">Leave the game</button>
+          {{#if hasEnoughPlayers}}
+            <button class="btn btn-success js-startGame">Start the game</button>
+          {{/if}}
+        {{else}}
+          <button class="btn btn-primary js-joinGame">Join the game</button>
+        {{/if}}
+        {{#if game.players}}
+          <hr/>
+          <h4>Current players</h4>
+          <ul class="players">
+          {{#each p in game.players}}
+            <li class="playerItem">
+              {{p.username}}
+            </li>
+          {{/each}}
+          </ul>
+          {{#if player}}
+            <hr/>
+            {{> chatbox chatId=game.chatId game=game player=player}}
+          {{/if}}
+        {{/if}}
       </div>
-      <div class="col-md-4">
-        <div class="card card-body">
-          <h4>Your role</h4>
+    </div>
+    <div class="col-4">
+      <h4>Online users</h4>
+      <ul>
+      {{#each u in onlineUsers}}
+        <li>{{u.profile.username}}</li>
+      {{/each}}
+      </ul>
+    </div>
+  </div>
+</template>
+
+<template name="board">
+  <h3>Ongoing game</h3>
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        {{> ongoingGame game=game player=player}}
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5>Your role</h5>
+        </div>
+        <div class="card-body">
           <p>{{player.role}}</p>
         </div>
-        <div class="card card-body">
-          <h4>Players</h4>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h5>Players</h5>
+        </div>
+        <div class="card-body">
           <ul class="players">
-          {{#each players}}
+          {{#each p in game.players}}
             <li class="playerItem">
-              {{#if isDead}}
-                <strike>{{username}}</strike> ({{role}})
+              {{#if p.isDead}}
+                <strike>{{p.username}}</strike> ({{p.role}})
               {{else}}
-                {{username}}
+                {{p.username}}
               {{/if}}
             </li>
           {{/each}}
           </ul>
         </div>
-        <div class="card card-body">
-          <h4>Remaining</h4>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h5>Remaining</h5>
+        </div>
+        <div class="card-body">
           <ul>
             <li>{{remainingWerewolves}} werewolves</li>
             <li>{{remainingVillagers}} villagers</li>
           </ul>
         </div>
       </div>
-    </div>
-  {{else}}
-    <div class="row">
-      <div class="col-8">
-        <div class="jumbotron">
-          <h3>New game!</h3>
-          {{#if player}}
-            <button class="btn btn-danger js-leaveGame">Leave the game</button>
-            {{#if hasEnoughPlayers}}
-              <button class="btn btn-success js-startGame">Start the game</button>
-            {{/if}}
-          {{else}}
-            <button class="btn btn-primary js-joinGame">Join the game</button>
-          {{/if}}
-          {{#if players}}
-            <hr/>
-            <h4>Current players</h4>
-            <ul class="players">
-            {{#each players}}
-              <li class="playerItem">
-                {{username}}
-              </li>
-            {{/each}}
-            </ul>
-            {{#if player}}
-              <hr/>
-              {{> chatbox chatId=chatId players=players}}
-            {{/if}}
-          {{/if}}
+      {{#if isGameMaster player}}
+        <div class="card bg-warning">
+          <div class="card-header">
+            <h5>Gamemaster</h5>
+          </div>
+          <div class="card-body">
+            <button class="btn btn-danger btn-sm js-killGame">Destroy the game</button>
+          </div>
         </div>
-      </div>
-      <div class="col-4">
-        <h4>Online users</h4>
-        <ul>
-        {{#each onlineUsers}}
-          <li>{{profile.username}}</li>
-        {{/each}}
-        </ul>
-      </div>
+      {{/if}}
     </div>
-  {{/if}}
+  </div>
 </template>
 
 <template name="ongoingGame">
@@ -154,90 +179,74 @@
   </div>
   {{/if}}
   <div class="card-body">
-    {{#if endedAt}}
+    {{#if game.endedAt}}
       {{> gameOver}}
     {{else}}
-      {{#if isIntro}}
-        <p class="lead">Full moon every night.</p>
-        <p>In the village, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects werewolves are attacking the village.</p>
-        <button class="btn btn-primary js-markIntroRead">Ready to continue</button>
+      {{#unless player}}
+        <div class="alert alert-info">You're a witness.</div>
       {{else}}
-        {{#if isWitness}}
-          <div class="alert alert-info">You're a witness.</div>
-        {{else}}
-          {{#if isDead}}
-            <div class="alert alert-danger">You're very DEAD !</div>
-          {{/if}}
+        {{#if player.isDead}}
+          <div class="alert alert-danger">You're dead.</div>
         {{/if}}
-        {{#if isNight}}
-          <h5>The village goes to sleep.</h5>
-          {{> ongoingNight}}
-        {{else}}
-          <h5>The village wakes up.</h5>
-          {{> ongoingDay}}
-        {{/if}}
+      {{/unless}}
+      {{#if isNight}}
+        {{> night game=game player=player}}
+      {{else}}
+        {{> day game=game player=player}}
       {{/if}}
     {{/if}}
   </div>
 </template>
 
-<template name="gameItem">
-  <pre>{{_id}}</pre>
-</template>
-
-<template name="gameOver">
-  <h3>Game over !</h3>
-  {{#unless winner.team}}
-    <p>It's actually a draw, so everybody loses because the village is on fire.</p>
+<template name="day">
+  {{#if isIntro}}
+    {{> intro game=game}}
   {{else}}
-    <p>Chicken dinner for <strong>{{winner.team}}</strong> ! {{winner.count}} survived the massacre.</p>
-  {{/unless}}
-  <button class="btn btn-primary js-dismiss">Dismiss</button>
-</template>
-
-<template name="ongoingDay">
-  {{#if waitHunter}}
-    {{#if player.isHunter}}
-      <p>Sorry for your loss of yourself. Here is one magic bullet.</p>
-      <ul>
-        {{#each alivePlayers}}
-          <li><button class="btn btn-primary js-hunt">{{username}}</button></li>
-        {{/each}}
-      </ul>
+    <h5>The village wakes up.</h5>
+    {{#if waitHunter}}
+      {{#if playerHasRole "hunter"}}
+        <p>Sorry for your loss of yourself. Here is one magic bullet.</p>
+        <ul>
+          {{#each alivePlayers}}
+            <li><button class="btn btn-primary js-hunt">{{username}}</button></li>
+          {{/each}}
+        </ul>
+      {{else}}
+        Hunter is dead. Let him be survived by another death...
+      {{/if}}
     {{else}}
-      Hunter is dead. Let him be survived by another death...
+      {{!-- @TODO
+      {{#if deaths}}
+        <p>These people died last night:</p>
+        <ul>
+          {{#each deaths}}
+            <li>{{role}} ({{username}})</li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <p>Nobody died last night.</p>
+      {{/if}}
+      --}}
+      <p>The village has to vote.</p>
+      <p>Hurry up, you only have {{remainingTime}} seconds !</p>
+      {{#if hasLynched}}
+        <p>You voted to lynch {{hasLynched.username}}.</p>
+      {{else}}
+        <h6>Choose whom to lynch.</h6>
+        <ul>
+          {{#each alivePlayers}}
+            <li><button class="btn btn-primary js-lynch">{{username}}</button></li>
+          {{/each}}
+        </ul>
+      {{/if}}
+      <h6>Discuss with the village.</h6>
+      {{> chatbox chatId=day.chatId game=game player=player}}
     {{/if}}
-  {{else}}
-    {{!-- @TODO
-    {{#if deaths}}
-      <p>These people died last night:</p>
-      <ul>
-        {{#each deaths}}
-          <li>{{role}} ({{username}})</li>
-        {{/each}}
-      </ul>
-    {{else}}
-      <p>Nobody died last night.</p>
-    {{/if}}
-    --}}
-    <p>The village has to vote.</p>
-    <p>Hurry up, you only have {{remainingTime}} seconds !</p>
-    {{#if hasLynched}}
-      <p>You voted to lynch {{hasLynched.username}}.</p>
-    {{else}}
-      <h6>Choose whom to lynch.</h6>
-      <ul>
-        {{#each alivePlayers}}
-          <li><button class="btn btn-primary js-lynch">{{username}}</button></li>
-        {{/each}}
-      </ul>
-    {{/if}}
-    <h6>Discuss with the village.</h6>
-    {{> chatbox chatId=day.chatId players=players}}
   {{/if}}
 </template>
 
-<template name="ongoingNight">
+<template name="night">
+  <h5>The village goes to sleep.</h5>
   {{#if waitSeer}}
     {{#if player.isSeer}}
     <p>Select a player to discover its secret.</p>
@@ -251,7 +260,7 @@
     {{/if}}
   {{else}}
     {{#if waitCupid}}
-      {{#if player.isCupid}}
+      {{#if playerHasRole "cupid"}}
       <p>Select 2 players to link with the power of Love.</p>
       <ul>
         {{#each alivePeople}}
@@ -263,7 +272,7 @@
       {{/if}}
     {{else}}
       {{#if waitWerewolves}}
-        {{#if player.isWerewolf}}
+        {{#if playerHasRole "werewolf"}}
           {{#unless werewolfHasVoted}}
             <p>Vote for the player to devour.</p>
             <ul>
@@ -276,14 +285,14 @@
           {{/unless}}
           {{#if showWerewolvesChat}}
             <h5>Discuss with werewolves</h5>
-            {{>chatbox chatId=night.attackChatId players=players}}
+            {{> chatbox chatId=night.attackChatId game=game player=player}}
           {{/if}}
         {{else}}
           <p>Werewolves are killing...</p>
         {{/if}}
       {{else}}
         {{#if waitWitch}}
-          {{#if player.isWitch}}
+          {{#if playerHasRole "witch"}}
             {{#if witchHasHealing}}
               <p>You can heal one of the badly injured people. Would you like to do so ?</p>
               <ul>
@@ -324,11 +333,25 @@
     </form>
   {{/if}}
   <ul class="messages">
-  {{#each messages}}
+  {{#each m in messages}}
     <li>
-      <span class="username">{{authorName}}</span>
-      <div class="body">{{content}}</div>
+      <span class="username">{{m.authorName}}</span>
+      <div class="body">{{m.content}}</div>
     </li>
   {{/each}}
   </ul>
+</template>
+
+<template name="gameItem">
+  <pre>{{_id}}</pre>
+</template>
+
+<template name="gameOver">
+  {{>storyGameOver winner=winner}}
+  <button class="btn btn-primary js-dismiss">Dismiss</button>
+</template>
+
+<template name="intro">
+  {{> storyIntro ""}}
+  <button class="btn btn-primary js-markIntroRead">Ready to continue</button>
 </template>

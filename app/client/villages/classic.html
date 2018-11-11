@@ -1,0 +1,13 @@
+<template name="storyIntro">
+  <p class="lead">Full moon every night!</p>
+  <p>In the village, things start to turn awry when a body is found deep in the forest. Its missing limbs suggests the work of a big, wild and hairy animal. The mayor suspects werewolves are attacking the village.</p>
+</template>
+
+<template name="storyGameOver">
+  <h3>Game over !</h3>
+  {{#unless winner.team}}
+    <p>It's actually a draw, so everybody loses because the village is on fire.</p>
+  {{else}}
+    <p>Chicken dinner for <strong>{{winner.team}}</strong> ! {{winner.count}} survived the massacre.</p>
+  {{/unless}}
+</template>
