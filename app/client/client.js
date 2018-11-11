@@ -249,6 +249,10 @@ Template.intro.events({
 
 Template.day.onCreated(function() {
   this.timer = null
+
+  const { game } = Template.currentData()
+  if (game.index > 0)
+    Session.set("deadSummary-"+game._id, true)
 })
 
 Template.day.onRendered(function() {
@@ -280,6 +284,9 @@ Template.day.helpers({
   },
   playerHasRole(role) {
     return this.player === role
+  },
+  hasDeadSummary() {
+    return Session.get("deadSummary-"+this.game._id) || false
   },
   alivePlayers() {
     return this.game.players.filter(p => !p.isDead)
@@ -316,7 +323,12 @@ Template.day.events({
 })
 
 Template.night.onCreated(function() {
-  if (this.data.player)
+  const { game, player } = Template.currentData()
+  console.log(game)
+  Session.set("deadSummary-"+game._id, true)
+
+  console.log(game)
+  if (player)
     notifyPlayer("night")
 })
 
@@ -325,7 +337,10 @@ Template.night.helpers({
     return this.game.isNight && this.game.nights.find(n => n.index === this.game.index)
   },
   playerHasRole(role) {
-    return this.player === role
+    return this.player.role === role
+  },
+  hasDeadSummary() {
+    return Session.get("deadSummary-"+this.game._id) || false
   },
   waitSeer() {
     const { nights, index, isNight, roles } = this.game
@@ -360,6 +375,11 @@ Template.night.helpers({
       return vote && vote.target && players.find(p => p.userId === vote.target)
     }
     return false
+  },
+  cupidChecked(userId) {
+    // context has game and p(layer)
+    const cupids = Session.get("cupid-"+this.game._id, [])
+    return cupids.indexOf(this.p.userId) !== -1
   },
   witchHasPoison() {
     const { _id, nights } = this.game
@@ -415,6 +435,7 @@ Template.night.helpers({
 
 Template.night.events({
   'click .js-seer'(e, t) {
+    console.log(t.data, this)
     Meteor.call('seer', t.data.game._id, this.userId, (err, seered) => {
       if (err)
         console.error(err.message)
@@ -441,6 +462,68 @@ Template.night.events({
       if (err)
         console.error(err.message)
     })
+  },
+  'click .js-cupid-toggle'(e, t) {
+    const gameId = t.data.game._id
+    let cupids = Session.get("cupid-"+gameId) || []
+    const index = cupids.indexOf(this.p.userId)
+    if (!e.target.checked && index >= 0)
+      cupids.splice(index, 1)
+    else if (e.target.checked && index === -1)
+      cupids.push(this.p.userId)
+    cupids = cupids.filter((v, i, a) => v && a.indexOf(v) === i)
+    Session.set("cupid-"+gameId, cupids)
+  },
+  'submit form.js-cupid-submit'(e, t) {
+    e.preventDefault()
+    const gameId = t.data.game._id
+    let cupids = Session.get("cupid-"+gameId) || []
+    cupids.filter((v, i, a) => v && a.indexOf(v) === i)
+    if (cupids.length > 2)
+      alert("Please select 2 players.")
+    else if (cupids.length === 2)
+      Meteor.call('cupid', gameId, cupids[0], cupids[1], (err, data) => {
+        if (err)
+          console.error(err.message)
+        Session.set("cupid-"+gameId, [])
+      })
+  }
+})
+
+Template.deadSummary.onCreated(function() {
+  const { game } = Template.currentData()
+  this.deaths = false
+  let possibleDeaths = []
+  // Deaths summary of the night, about the day
+  const day = game.days.find(d => d.index === game.index)
+  if (game.isNight && day) {
+    possibleDeaths = [day.lynched, day.hunted]
+  }
+  // Deaths summary of the day, about the night
+  else if (game.index > 0) {
+    const night = game.nights.find(n => n.index === game.index - 1)
+    if (night) {
+      const { cupids, attacked, poisoned } = night
+      if (cupids && cupids.length > 0)
+        possibleDeaths = cupids
+      possibleDeaths = [...possibleDeaths, attacked, poisoned]
+      if (day)
+        possibleDeaths.push(day.hunted)
+    }
+  }
+  if (possibleDeaths.length > 0)
+    this.deaths = possibleDeaths.map(d => game.players.find(p => p.userId === d && p.isDead)).filter(d => !!d)
+})
+
+Template.deadSummary.helpers({
+  deaths() {
+    return Template.instance().deaths
+  }
+})
+
+Template.deadSummary.events({
+  'click .js-dismiss'(e, t) {
+    Session.set("deadSummary-"+t.data.game._id, false)
   }
 })
 

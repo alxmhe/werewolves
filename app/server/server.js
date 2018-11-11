@@ -81,6 +81,13 @@ function computeDeaths(game) {
     }
   }
 
+  // Heal player
+  if (game.isNight && night && night.healed) {
+    const healedIndex = deaths.indexOf(night.healed)
+    if (healedIndex >= 0)
+      deaths.splice(healedIndex, 1)
+  }
+
   // Add the deaths by cupid.
   if (night && night.cupids) {
     deaths.forEach(d => {
@@ -90,12 +97,6 @@ function computeDeaths(game) {
           ...night.cupids.filter(c => deaths.indexOf(c) === -1)
         ]
     })
-  }
-  // Heal player
-  if (game.isNight && night && night.healed) {
-    const healedIndex = deaths.indexOf(night.healed)
-    if (healedIndex >= 0)
-      deaths.splice(healedIndex, 1)
   }
   return deaths
 }
@@ -260,7 +261,7 @@ function computeVotesLynch(gameId) {
   }).filter(r => r.votesAgainst > 0)
   results.sort((val1, val2) => val1.votesAgainst < val2.votesAgainst)
 
-  if (results.length > 0 && results[0].votesAgainst !== results[1].votesAgainst)
+  if (results.length > 0 && (results.length === 1 || results[0].votesAgainst !== results[1].votesAgainst))
     day.lynched = results[0].userId
 
   return Games.update(gameId, {
